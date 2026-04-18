@@ -27,7 +27,10 @@
   const MOVE_STEP_MS = 115;
 
   /** Длительность исчезновения линии (масштаб + прозрачность), мс. */
-  const VANISH_MS = 320;
+  const VANISH_MS = 220;
+
+  /** Пауза перед следующей проверкой каскада после сброса (мс), 0 — без лишней задержки. */
+  const CASCADE_GAP_MS = 0;
 
   /** Ключ localStorage для рекорда (дублирует попытку чтения highscore.txt при HTTP). */
   const LS_HIGH = 'lines98_highscore';
@@ -316,64 +319,59 @@
   }
 
   /**
-   * Обход одной прямой линии клеток (уже в порядке «вдоль линии») — ищет непрерывные
-   * участки одного цвета длиной ≥ 5.
-   * @param {number[][]} grid
-   * @param {Array<{r:number,c:number}>} pts
-   * @param {Array<Array<{r:number,c:number}>>} out
+   * Диагонали обеих ориентаций: обход «от начала» отрезка по 4 направлениям,
+   * чтобы не пропускать линии из-за порядка точек на длинной диагонали.
+   * Дубликаты одного и того же набора клеток отсекаются по сигнатуре.
    */
-  function scanLinePoints(grid, pts, out) {
-    let i = 0;
-    while (i < pts.length) {
-      const { r, c } = pts[i];
-      const v = grid[r][c];
-      if (v === EMPTY) {
-        i++;
-        continue;
+  function collectAllDiagonals(grid, out) {
+    const dirs = [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ];
+    const seen = new Set();
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        const v = grid[r][c];
+        if (v === EMPTY) continue;
+        for (const [dr, dc] of dirs) {
+          const pr = r - dr;
+          const pc = c - dc;
+          if (
+            pr >= 0 &&
+            pr < BOARD_SIZE &&
+            pc >= 0 &&
+            pc < BOARD_SIZE &&
+            grid[pr][pc] === v
+          ) {
+            continue;
+          }
+          /** @type {Array<{r:number,c:number}>} */
+          const seg = [];
+          let cr = r;
+          let cc = c;
+          while (
+            cr >= 0 &&
+            cr < BOARD_SIZE &&
+            cc >= 0 &&
+            cc < BOARD_SIZE &&
+            grid[cr][cc] === v
+          ) {
+            seg.push({ r: cr, c: cc });
+            cr += dr;
+            cc += dc;
+          }
+          if (seg.length < 5) continue;
+          const sig = seg
+            .map((p) => keyRC(p.r, p.c))
+            .sort()
+            .join('|');
+          if (seen.has(sig)) continue;
+          seen.add(sig);
+          out.push(seg);
+        }
       }
-      let j = i;
-      while (j < pts.length) {
-        const p = pts[j];
-        if (grid[p.r][p.c] !== v) break;
-        j++;
-      }
-      const len = j - i;
-      if (len >= 5) {
-        const seg = [];
-        for (let k = i; k < j; k++) seg.push({ r: pts[k].r, c: pts[k].c });
-        out.push(seg);
-      }
-      i = j;
-    }
-  }
-
-  /**
-   * Диагональ \ (постоянная разность r - c).
-   */
-  function collectDiagDown(grid, out) {
-    for (let d = -(BOARD_SIZE - 1); d <= BOARD_SIZE - 1; d++) {
-      /** @type {Array<{r:number,c:number}>} */
-      const pts = [];
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        const c = r - d;
-        if (c >= 0 && c < BOARD_SIZE) pts.push({ r, c });
-      }
-      scanLinePoints(grid, pts, out);
-    }
-  }
-
-  /**
-   * Диагональ / (постоянная сумма r + c).
-   */
-  function collectDiagUp(grid, out) {
-    for (let s = 0; s <= 2 * (BOARD_SIZE - 1); s++) {
-      /** @type {Array<{r:number,c:number}>} */
-      const pts = [];
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        const c = s - r;
-        if (c >= 0 && c < BOARD_SIZE) pts.push({ r, c });
-      }
-      scanLinePoints(grid, pts, out);
     }
   }
 
@@ -387,8 +385,7 @@
     const segments = [];
     collectHorizontal(grid, segments);
     collectVertical(grid, segments);
-    collectDiagDown(grid, segments);
-    collectDiagUp(grid, segments);
+    collectAllDiagonals(grid, segments);
 
     let scoreDelta = 0;
     for (const seg of segments) {
@@ -835,8 +832,9 @@
         for (const p of list) {
           this.board.setAt(p.r, p.c, EMPTY);
         }
+        this._repairNextSpawnPreview();
         this._fullRedraw();
-        window.setTimeout(() => this._resolveLinesChain(true, done), 40);
+        window.setTimeout(() => this._resolveLinesChain(true, done), CASCADE_GAP_MS);
       });
     }
 
