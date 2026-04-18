@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Линии — Lines</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="brand">Линии</div>
+      <div class="preview-block" aria-label="Следующие три шарика">
+        <span class="label">Далее</span>
+        <div id="preview" class="preview"></div>
+      </div>
+      <div class="scores">
+        <div class="score-line">Счёт: <strong id="score">0</strong></div>
+        <div class="score-line">Рекорд: <strong id="highscore">0</strong></div>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <button type="button" id="btn-new" class="btn">Новая игра</button>
+      <button type="button" id="btn-undo" class="btn" disabled>Шаг назад</button>
+      <button type="button" id="btn-exit" class="btn btn-ghost">Выход</button>
+    </div>
+
+    <main class="playfield">
+      <div id="board" class="board" role="grid" aria-label="Игровое поле 9 на 9"></div>
+    </main>
+
+    <p class="hint">Выберите шарик, затем пустую клетку. Путь только по горизонтали и вертикали.</p>
+  </div>
+
+  <div id="overlay-gameover" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="go-title">
+    <div class="overlay-card">
+      <h2 id="go-title">Игра окончена</h2>
+      <p class="go-score">Счёт: <strong id="go-final">0</strong></p>
+      <button type="button" id="btn-restart" class="btn btn-primary">Играть снова</button>
+    </div>
+  </div>
+
+  <script src="js/game.js" defer></script>
+</body>
+</html>
