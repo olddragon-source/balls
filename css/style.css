@@ -1,15 +1,15 @@
-/* Минималистичная тёмная тема, сетка и крупные зоны нажатия для тач-экрана */
+/* Светлая минималистичная тема, сетка и крупные зоны нажатия для тач-экрана */
 
 :root {
-  --bg: #1a1d24;
-  --bg-elev: #232830;
-  --grid: #3d4450;
-  --cell: #2b303a;
-  --cell-hover: #343b47;
-  --accent: #5eb8ff;
-  --text: #e8eaef;
-  --muted: #9aa3b2;
-  --danger: #ff6b6b;
+  --bg: #ffffff;
+  --bg-elev: #f4f5f7;
+  --grid: #dde1e8;
+  --cell: #ffffff;
+  --cell-hover: #eef0f4;
+  --accent: #1565c0;
+  --text: #1a1d24;
+  --muted: #5c6370;
+  --danger: #c62828;
   --radius: 10px;
   --cell-size: min(10vw, 52px);
 }
@@ -22,7 +22,7 @@ html, body {
   margin: 0;
   min-height: 100%;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: radial-gradient(ellipse 120% 80% at 50% 0%, #2a3140 0%, var(--bg) 55%);
+  background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -69,7 +69,7 @@ html, body {
   padding: 8px 12px;
   background: var(--bg-elev);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid #d0d5dd;
   min-height: 52px;
   align-items: center;
   justify-content: center;
@@ -114,8 +114,8 @@ html, body {
 
 .btn {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, #3a4252, #2f3644);
+  border: 1px solid #c5cad3;
+  background: linear-gradient(180deg, #ffffff, #f0f2f5);
   color: var(--text);
   padding: 10px 16px;
   border-radius: var(--radius);
@@ -126,8 +126,8 @@ html, body {
 }
 
 .btn:hover:not(:disabled) {
-  border-color: rgba(94, 184, 255, 0.45);
-  background: linear-gradient(180deg, #424b5e, #363e4d);
+  border-color: #90caf9;
+  background: linear-gradient(180deg, #fafbfc, #e8ecf2);
 }
 
 .btn:active:not(:disabled) {
@@ -141,12 +141,13 @@ html, body {
 
 .btn-ghost {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: #c5cad3;
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #4a9fe8, #2d7cc4);
-  border-color: rgba(94, 184, 255, 0.5);
+  background: linear-gradient(180deg, #42a5f5, #1976d2);
+  border-color: #1565c0;
+  color: #ffffff;
   width: 100%;
   margin-top: 8px;
 }
@@ -165,8 +166,8 @@ html, body {
   background: var(--grid);
   border-radius: 12px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 12px 40px rgba(0, 0, 0, 0.45);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 24px rgba(0, 0, 0, 0.08);
   position: relative;
 }
 
@@ -188,7 +189,7 @@ html, body {
 }
 
 .cell.selected {
-  outline: 2px solid var(--accent);
+  outline: 2px solid #1976d2;
   outline-offset: -2px;
   z-index: 2;
 }
@@ -229,7 +230,6 @@ html, body {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
 }
 
 .hint {
@@ -244,13 +244,13 @@ html, body {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 18, 0.82);
+  background: rgba(255, 255, 255, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   padding: 16px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 }
 
 .overlay.hidden {
@@ -258,14 +258,14 @@ html, body {
 }
 
 .overlay-card {
-  background: var(--bg-elev);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
   border-radius: 16px;
   padding: 28px 32px;
   max-width: 360px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
 }
 
 .overlay-card h2 {
