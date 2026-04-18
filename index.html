@@ -10,10 +10,6 @@
   <div id="app">
     <header class="top-bar">
       <div class="brand">Линии</div>
-      <div class="preview-block" aria-label="Следующие три шарика">
-        <span class="label">Далее</span>
-        <div id="preview" class="preview"></div>
-      </div>
       <div class="scores">
         <div class="score-line">Счёт: <strong id="score">0</strong></div>
         <div class="score-line">Рекорд: <strong id="highscore">0</strong></div>
@@ -27,7 +23,9 @@
     </div>
 
     <main class="playfield">
-      <div id="board" class="board" role="grid" aria-label="Игровое поле 9 на 9"></div>
+      <div class="board-wrap">
+        <div id="board" class="board" role="grid" aria-label="Игровое поле 9 на 9"></div>
+      </div>
     </main>
 
     <p class="hint">Выберите шарик, затем пустую клетку. Путь только по горизонтали и вертикали.</p>

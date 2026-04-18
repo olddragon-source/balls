@@ -410,6 +410,12 @@
       this.board = new Board();
       /** @type {number[]} три предстоящих цвета для штрафного появления */
       this.nextColors = [];
+      /**
+       * Три пустые клетки, куда встанут nextColors при следующем «штрафном» появлении.
+       * В модели доски там EMPTY; визуально — половинные маркеры.
+       * @type {Array<{r:number,c:number}|null>}
+       */
+      this.nextSpawnCells = [null, null, null];
       /** @type {number} */
       this.score = 0;
       /** @type {number} */
@@ -425,7 +431,6 @@
       this.elBoard = document.getElementById('board');
       this.elScore = document.getElementById('score');
       this.elHigh = document.getElementById('highscore');
-      this.elPreview = document.getElementById('preview');
       this.elOverlay = document.getElementById('overlay-gameover');
       this.elGoFinal = document.getElementById('go-final');
 
@@ -538,6 +543,7 @@
       this._busy = false;
       this._fillNextColors();
       this.board.placeRandomBalls(INITIAL_RANDOM_BALLS);
+      this._assignNextSpawnPreview();
       this._syncUndoButton();
       this._fullRedraw();
       this._renderScore();
@@ -548,10 +554,67 @@
       for (let i = 0; i < SPAWN_COUNT; i++) this.nextColors.push(randInt(COLORS));
     }
 
+    /**
+     * Выбирает три пустые клетки — будущие места для nextColors (пока клетки остаются пустыми в логике).
+     */
+    _assignNextSpawnPreview() {
+      this.nextSpawnCells = [null, null, null];
+      if (this.board.countEmpty() < SPAWN_COUNT) return;
+      const picked = this.board.pickRandomEmptyCells(SPAWN_COUNT);
+      if (picked.length < SPAWN_COUNT) return;
+      for (let i = 0; i < SPAWN_COUNT; i++) {
+        this.nextSpawnCells[i] = { r: picked[i].r, c: picked[i].c };
+      }
+    }
+
+    /**
+     * После хода: оставляет валидные клетки превью, недоступные слоты заполняет новыми пустыми (без полного сброса).
+     */
+    _repairNextSpawnPreview() {
+      const used = new Set();
+      for (let i = 0; i < SPAWN_COUNT; i++) {
+        const p = this.nextSpawnCells[i];
+        if (p && this.board.getAt(p.r, p.c) === EMPTY) {
+          used.add(keyRC(p.r, p.c));
+        } else {
+          this.nextSpawnCells[i] = null;
+        }
+      }
+      for (let i = 0; i < SPAWN_COUNT; i++) {
+        if (this.nextSpawnCells[i]) continue;
+        const candidates = [];
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (this.board.getAt(r, c) !== EMPTY) continue;
+            const k = keyRC(r, c);
+            if (!used.has(k)) candidates.push({ r, c });
+          }
+        }
+        if (candidates.length === 0) continue;
+        const pick = candidates[randInt(candidates.length)];
+        this.nextSpawnCells[i] = pick;
+        used.add(keyRC(pick.r, pick.c));
+      }
+    }
+
+    /**
+     * Индекс в nextColors / nextSpawnCells для клетки с маркером «следующий шарик», иначе -1.
+     * @param {number} r
+     * @param {number} c
+     */
+    _nextPreviewIndex(r, c) {
+      for (let i = 0; i < this.nextSpawnCells.length; i++) {
+        const p = this.nextSpawnCells[i];
+        if (p && p.r === r && p.c === c) return i;
+      }
+      return -1;
+    }
+
     _snapshot() {
       return {
         board: cloneGrid(this.board.cells),
         nextColors: this.nextColors.slice(),
+        nextSpawnCells: this.nextSpawnCells.map((p) => (p ? { r: p.r, c: p.c } : null)),
         score: this.score,
       };
     }
@@ -560,6 +623,11 @@
       this.board.cells = cloneGrid(snap.board);
       this.nextColors = snap.nextColors.slice();
       this.score = snap.score;
+      if (snap.nextSpawnCells && snap.nextSpawnCells.length === SPAWN_COUNT) {
+        this.nextSpawnCells = snap.nextSpawnCells.map((p) => (p ? { r: p.r, c: p.c } : null));
+      } else {
+        this._assignNextSpawnPreview();
+      }
     }
 
     _renderScore() {
@@ -582,11 +650,10 @@
         }
       }
       this._renderSelection();
-      this._renderPreview();
     }
 
     /**
-     * Отрисовка одной клетки: пусто или img с SVG.
+     * Отрисовка одной клетки: полный шарик, пусто, или маркер будущего шарика (в 2 раза меньше).
      */
     _renderCell(r, c, withVanishClass) {
       const cell = this.cellEls[r][c];
@@ -601,6 +668,19 @@
         img.draggable = false;
         wrap.appendChild(img);
         if (withVanishClass) wrap.classList.add('vanish');
+      } else {
+        const pi = this._nextPreviewIndex(r, c);
+        if (pi >= 0 && this.nextColors[pi] !== undefined) {
+          const mark = document.createElement('div');
+          mark.className = 'ball-next-marker';
+          mark.setAttribute('aria-hidden', 'true');
+          const img = document.createElement('img');
+          img.src = Ball.svgPath(this.nextColors[pi]);
+          img.alt = '';
+          img.draggable = false;
+          mark.appendChild(img);
+          wrap.appendChild(mark);
+        }
       }
     }
 
@@ -614,22 +694,6 @@
               this.selection.c === c
           );
         }
-      }
-    }
-
-    _renderPreview() {
-      this.elPreview.innerHTML = '';
-      for (let i = 0; i < SPAWN_COUNT; i++) {
-        const slot = document.createElement('div');
-        slot.className = 'preview-slot';
-        const col = this.nextColors[i];
-        if (col !== undefined) {
-          const img = document.createElement('img');
-          img.src = Ball.svgPath(col);
-          img.alt = '';
-          slot.appendChild(img);
-        }
-        this.elPreview.appendChild(slot);
       }
     }
 
@@ -702,6 +766,7 @@
           document.body.removeChild(flyer);
           this.board.setAt(from.r, from.c, EMPTY);
           this.board.setAt(to.r, to.c, color);
+          this._repairNextSpawnPreview();
           this._renderCell(from.r, from.c, false);
           this._renderCell(to.r, to.c, false);
           onDone();
@@ -751,6 +816,7 @@
         if (!removedYet) {
           this._spawnNextThree(() => done());
         } else {
+          this._assignNextSpawnPreview();
           done();
         }
         return;
@@ -786,7 +852,7 @@
     }
 
     /**
-     * Три шарика из очереди nextColors в случайные пустые клетки; очередь пополняется.
+     * Три шарика из очереди nextColors в заранее показанные клетки nextSpawnCells; очередь и места обновляются.
      */
     _spawnNextThree(done) {
       const need = SPAWN_COUNT;
@@ -797,20 +863,34 @@
         return;
       }
 
-      const slots = this.board.pickRandomEmptyCells(need);
-      if (slots.length < need) {
-        this._gameOver = true;
-        this._showGameOver();
-        done();
-        return;
-      }
-
+      const used = new Set();
       for (let i = 0; i < need; i++) {
         const col = this.nextColors[i];
-        const p = slots[i];
+        let p = null;
+        const planned = this.nextSpawnCells[i];
+        if (planned && this.board.getAt(planned.r, planned.c) === EMPTY && !used.has(keyRC(planned.r, planned.c))) {
+          p = planned;
+        } else {
+          for (let r = 0; r < BOARD_SIZE && !p; r++) {
+            for (let c = 0; c < BOARD_SIZE && !p; c++) {
+              const k = keyRC(r, c);
+              if (this.board.getAt(r, c) === EMPTY && !used.has(k)) {
+                p = { r, c };
+              }
+            }
+          }
+        }
+        if (!p) {
+          this._gameOver = true;
+          this._showGameOver();
+          done();
+          return;
+        }
+        used.add(keyRC(p.r, p.c));
         this.board.setAt(p.r, p.c, col);
       }
       this._fillNextColors();
+      this._assignNextSpawnPreview();
       this._fullRedraw();
       done();
     }
