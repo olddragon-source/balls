@@ -23,20 +23,19 @@ import { findLinesAndScore } from './lines.js';
 export class Game {
   constructor() {
     this.board = new Board();
-    /** @type {number[]} три предстоящих цвета для штрафного появления */
-    this.nextColors = [];
     /**
-     * Три пустые клетки, куда встанут nextColors при следующем «штрафном» появлении.
-     * @type {Array<{r:number,c:number}|null>}
+     * Единый план штрафного появления: i-й шарик = color именно в (r,c).
+     * Появление на доске копирует этот план без подбора других клеток.
+     * @type {Array<{ r: number; c: number; color: number } | null>}
      */
-    this.nextSpawnCells = [null, null, null];
+    this.nextSpawnPlan = new Array(SPAWN_COUNT).fill(null);
     /** @type {number} */
     this.score = 0;
     /** @type {number} */
     this.highScore = 0;
     /** @type {{r:number,c:number}|null} */
     this.selection = null;
-    /** @type {Array<{ board: number[][], nextColors: number[], nextSpawnCells: Array<{r:number,c:number}|null>, score: number }>} */
+    /** @type {Array<{ board: number[][], nextSpawnPlan: Array<{ r: number; c: number; color: number } | null>, score: number }>} */
     this.undoStack = [];
 
     this._busy = false;
@@ -143,41 +142,63 @@ export class Game {
     this.selection = null;
     this.undoStack = [];
     this._busy = false;
-    this._fillNextColors();
     this.board.placeRandomBalls(INITIAL_RANDOM_BALLS);
-    this._assignNextSpawnPreview();
+    this._buildNextSpawnPlan();
     this._syncUndoButton();
     this._fullRedraw();
     this._renderScore();
   }
 
-  _fillNextColors() {
-    this.nextColors = [];
-    for (let i = 0; i < SPAWN_COUNT; i++) this.nextColors.push(randInt(COLORS));
+  _clearNextSpawnPlan() {
+    this.nextSpawnPlan = new Array(SPAWN_COUNT).fill(null);
   }
 
-  _assignNextSpawnPreview() {
-    this.nextSpawnCells = [null, null, null];
+  /**
+   * Новый полный план: три случайных цвета и три различные пустые клетки.
+   */
+  _buildNextSpawnPlan() {
+    this._clearNextSpawnPlan();
     if (this.board.countEmpty() < SPAWN_COUNT) return;
     const picked = this.board.pickRandomEmptyCells(SPAWN_COUNT);
     if (picked.length < SPAWN_COUNT) return;
     for (let i = 0; i < SPAWN_COUNT; i++) {
-      this.nextSpawnCells[i] = { r: picked[i].r, c: picked[i].c };
+      this.nextSpawnPlan[i] = {
+        r: picked[i].r,
+        c: picked[i].c,
+        color: randInt(COLORS),
+      };
     }
   }
 
-  _repairNextSpawnPreview() {
+  /**
+   * Восстанавливает план после хода: сохраняет цвет слота i, подбирает новую пустую (r,c),
+   * все три позиции различны и совпадают с пустыми клетками доски.
+   * @returns {boolean} false если нельзя разместить три слота (нет трёх свободных клеток).
+   */
+  _repairNextSpawnPlan() {
+    if (this.board.countEmpty() < SPAWN_COUNT) {
+      this._clearNextSpawnPlan();
+      return false;
+    }
+    /** @type {Array<{ r: number; c: number; color: number } | null>} */
+    const out = new Array(SPAWN_COUNT).fill(null);
     const used = new Set();
     for (let i = 0; i < SPAWN_COUNT; i++) {
-      const p = this.nextSpawnCells[i];
-      if (p && this.board.getAt(p.r, p.c) === EMPTY) {
-        used.add(keyRC(p.r, p.c));
-      } else {
-        this.nextSpawnCells[i] = null;
+      const e = this.nextSpawnPlan[i];
+      if (
+        e &&
+        this.board.inBounds(e.r, e.c) &&
+        this.board.getAt(e.r, e.c) === EMPTY &&
+        !used.has(keyRC(e.r, e.c))
+      ) {
+        out[i] = { r: e.r, c: e.c, color: e.color };
+        used.add(keyRC(e.r, e.c));
       }
     }
     for (let i = 0; i < SPAWN_COUNT; i++) {
-      if (this.nextSpawnCells[i]) continue;
+      if (out[i]) continue;
+      const prev = this.nextSpawnPlan[i];
+      const color = prev && typeof prev.color === 'number' ? prev.color : randInt(COLORS);
       const candidates = [];
       for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
@@ -186,17 +207,38 @@ export class Game {
           if (!used.has(k)) candidates.push({ r, c });
         }
       }
-      if (candidates.length === 0) continue;
+      if (candidates.length === 0) {
+        this._clearNextSpawnPlan();
+        return false;
+      }
       const pick = candidates[randInt(candidates.length)];
-      this.nextSpawnCells[i] = pick;
+      out[i] = { r: pick.r, c: pick.c, color };
       used.add(keyRC(pick.r, pick.c));
     }
+    this.nextSpawnPlan = out;
+    return true;
+  }
+
+  /**
+   * Строгая проверка: три слота, три разные пустые клетки, совпадение с моделью.
+   */
+  _spawnPlanMatchesBoard() {
+    const seen = new Set();
+    for (let i = 0; i < SPAWN_COUNT; i++) {
+      const e = this.nextSpawnPlan[i];
+      if (!e) return false;
+      if (!this.board.inBounds(e.r, e.c) || this.board.getAt(e.r, e.c) !== EMPTY) return false;
+      const k = keyRC(e.r, e.c);
+      if (seen.has(k)) return false;
+      seen.add(k);
+    }
+    return true;
   }
 
   _nextPreviewIndex(r, c) {
-    for (let i = 0; i < this.nextSpawnCells.length; i++) {
-      const p = this.nextSpawnCells[i];
-      if (p && p.r === r && p.c === c) return i;
+    for (let i = 0; i < this.nextSpawnPlan.length; i++) {
+      const e = this.nextSpawnPlan[i];
+      if (e && e.r === r && e.c === c) return i;
     }
     return -1;
   }
@@ -204,29 +246,11 @@ export class Game {
   _snapshot() {
     return {
       board: cloneGrid(this.board.cells),
-      nextColors: this.nextColors.slice(),
-      nextSpawnCells: this.nextSpawnCells.map((p) => (p ? { r: p.r, c: p.c } : null)),
+      nextSpawnPlan: this.nextSpawnPlan.map((e) =>
+        e ? { r: e.r, c: e.c, color: e.color } : null
+      ),
       score: this.score,
     };
-  }
-
-  _sanitizeNextSpawnCellsToMatchBoard() {
-    const used = new Set();
-    for (let i = 0; i < SPAWN_COUNT; i++) {
-      const p = this.nextSpawnCells[i];
-      if (!p) continue;
-      const k = keyRC(p.r, p.c);
-      if (
-        !this.board.inBounds(p.r, p.c) ||
-        this.board.getAt(p.r, p.c) !== EMPTY ||
-        used.has(k)
-      ) {
-        this.nextSpawnCells[i] = null;
-      } else {
-        used.add(k);
-      }
-    }
-    this._repairNextSpawnPreview();
   }
 
   _restore(snap) {
@@ -236,17 +260,23 @@ export class Game {
         this.board.cells[r][c] = g[r][c];
       }
     }
-    this.nextColors = snap.nextColors.slice();
     this.score = snap.score;
 
-    if (Array.isArray(snap.nextSpawnCells) && snap.nextSpawnCells.length === SPAWN_COUNT) {
-      this.nextSpawnCells = snap.nextSpawnCells.map((p) =>
-        p && typeof p.r === 'number' && typeof p.c === 'number' ? { r: p.r, c: p.c } : null
+    if (Array.isArray(snap.nextSpawnPlan) && snap.nextSpawnPlan.length === SPAWN_COUNT) {
+      this.nextSpawnPlan = snap.nextSpawnPlan.map((e) =>
+        e &&
+        typeof e.r === 'number' &&
+        typeof e.c === 'number' &&
+        typeof e.color === 'number'
+          ? { r: e.r, c: e.c, color: e.color }
+          : null
       );
     } else {
-      this.nextSpawnCells = [null, null, null];
+      this._clearNextSpawnPlan();
     }
-    this._sanitizeNextSpawnCellsToMatchBoard();
+    if (!this._repairNextSpawnPlan()) {
+      this._clearNextSpawnPlan();
+    }
   }
 
   _renderScore() {
@@ -286,12 +316,13 @@ export class Game {
       if (withVanishClass) wrap.classList.add('vanish');
     } else {
       const pi = this._nextPreviewIndex(r, c);
-      if (pi >= 0 && this.nextColors[pi] !== undefined) {
+      const preview = pi >= 0 ? this.nextSpawnPlan[pi] : null;
+      if (preview) {
         const mark = document.createElement('div');
         mark.className = 'ball-next-marker';
         mark.setAttribute('aria-hidden', 'true');
         const img = document.createElement('img');
-        img.src = Ball.svgPath(this.nextColors[pi]);
+        img.src = Ball.svgPath(preview.color);
         img.alt = '';
         img.draggable = false;
         mark.appendChild(img);
@@ -371,7 +402,7 @@ export class Game {
         document.body.removeChild(flyer);
         this.board.setAt(from.r, from.c, EMPTY);
         this.board.setAt(to.r, to.c, color);
-        this._repairNextSpawnPreview();
+        this._repairNextSpawnPlan();
         // Full redraw: repair can move preview markers to cells other than from/to.
         this._fullRedraw();
         onDone();
@@ -409,8 +440,8 @@ export class Game {
       if (!removedYet) {
         this._spawnNextThree(() => done());
       } else {
-        this._assignNextSpawnPreview();
-        // Cascade just finished; preview coords were replaced — must repaint markers.
+        // Следующие три шара не меняются при исчезновении линий — только после штрафного появления.
+        this._repairNextSpawnPlan();
         this._fullRedraw();
         done();
       }
@@ -430,7 +461,7 @@ export class Game {
       for (const p of list) {
         this.board.setAt(p.r, p.c, EMPTY);
       }
-      this._repairNextSpawnPreview();
+      this._repairNextSpawnPlan();
       this._fullRedraw();
       window.setTimeout(() => this._resolveLinesChain(true, done), CASCADE_GAP_MS);
     });
@@ -453,34 +484,18 @@ export class Game {
       return;
     }
 
-    const used = new Set();
-    for (let i = 0; i < need; i++) {
-      const col = this.nextColors[i];
-      let p = null;
-      const planned = this.nextSpawnCells[i];
-      if (planned && this.board.getAt(planned.r, planned.c) === EMPTY && !used.has(keyRC(planned.r, planned.c))) {
-        p = planned;
-      } else {
-        for (let r = 0; r < BOARD_SIZE && !p; r++) {
-          for (let c = 0; c < BOARD_SIZE && !p; c++) {
-            const k = keyRC(r, c);
-            if (this.board.getAt(r, c) === EMPTY && !used.has(k)) {
-              p = { r, c };
-            }
-          }
-        }
-      }
-      if (!p) {
-        this._gameOver = true;
-        this._showGameOver();
-        done();
-        return;
-      }
-      used.add(keyRC(p.r, p.c));
-      this.board.setAt(p.r, p.c, col);
+    if (!this._repairNextSpawnPlan() || !this._spawnPlanMatchesBoard()) {
+      this._gameOver = true;
+      this._showGameOver();
+      done();
+      return;
     }
-    this._fillNextColors();
-    this._assignNextSpawnPreview();
+
+    for (let i = 0; i < need; i++) {
+      const e = this.nextSpawnPlan[i];
+      this.board.setAt(e.r, e.c, e.color);
+    }
+    this._buildNextSpawnPlan();
     this._fullRedraw();
     done();
   }
