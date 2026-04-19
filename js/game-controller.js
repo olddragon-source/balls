@@ -438,7 +438,7 @@ export class Game {
 
     if (cells.size === 0) {
       if (!removedYet) {
-        this._spawnNextThree(() => done());
+        this._spawnNextThree(() => this._resolveLinesChain(true, done));
       } else {
         // Следующие три шара не меняются при исчезновении линий — только после штрафного появления.
         this._repairNextSpawnPlan();

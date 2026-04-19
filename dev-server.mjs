@@ -1,5 +1,5 @@
 /**
- * Serves the static folder over HTTP (optional: LAN access for phones on same Wi‑Fi).
+ * Serves the static folder over HTTP (optional: LAN access for phones on the same Wi-Fi).
  */
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -70,9 +70,31 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-const port = Number(process.env.PORT) || 5173;
+const requestedPort = Number(process.env.PORT) || 5173;
 const host = process.env.HOST || '0.0.0.0';
-server.listen(port, host, () => {
-  console.log('Lines — open in a browser:');
-  printListenUrls(port);
+let currentPort = requestedPort;
+let listenAttempt = 0;
+
+function listenOn(port) {
+  currentPort = port;
+  listenAttempt += 1;
+  const attemptId = listenAttempt;
+  server.listen(port, host, () => {
+    if (attemptId !== listenAttempt) return;
+    console.log('Lines - open in a browser:');
+    printListenUrls(port);
+  });
+}
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE' && !process.env.PORT) {
+    const nextPort = currentPort + 1;
+    console.log(`Port ${currentPort} is busy, trying ${nextPort}...`);
+    listenOn(nextPort);
+    return;
+  }
+
+  throw err;
 });
+
+listenOn(requestedPort);
