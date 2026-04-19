@@ -13,7 +13,8 @@ describe('lines', () => {
     assert.equal(scoreForLineLength(4), 0);
     assert.equal(scoreForLineLength(5), 10);
     assert.equal(scoreForLineLength(6), 12);
-    assert.equal(scoreForLineLength(7), 14);
+    assert.equal(scoreForLineLength(7), 16);
+    assert.equal(scoreForLineLength(8), 20);
   });
 
   it('findLinesAndScore detects horizontal run of 5', () => {
@@ -33,7 +34,7 @@ describe('lines', () => {
     grid[r][5] = 1;
     const { cells, scoreDelta } = findLinesAndScore(grid);
     assert.equal(cells.size, 6);
-    assert.ok(scoreDelta > 10);
+    assert.equal(scoreDelta, 12);
   });
 
   it('findLinesAndScore detects main diagonal of 5', () => {

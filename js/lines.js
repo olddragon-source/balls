@@ -3,13 +3,14 @@ import { keyRC } from './grid-utils.js';
 
 /**
  * Очки за одну непрерывную линию длины L ≥ 5:
- * 10 за базовые 5 шариков + 2 * N, где N — число «лишних» шариков (L - 5).
+ * 5 = 10, 6 = 12, далее +4 за каждый следующий шарик.
  * @param {number} length
  */
 export function scoreForLineLength(length) {
   if (length < 5) return 0;
-  const n = length - 5;
-  return 10 + 2 * n;
+  if (length === 5) return 10;
+  if (length === 6) return 12;
+  return 12 + (length - 6) * 4;
 }
 
 /**
