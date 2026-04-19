@@ -372,8 +372,8 @@ export class Game {
         this.board.setAt(from.r, from.c, EMPTY);
         this.board.setAt(to.r, to.c, color);
         this._repairNextSpawnPreview();
-        this._renderCell(from.r, from.c, false);
-        this._renderCell(to.r, to.c, false);
+        // Full redraw: repair can move preview markers to cells other than from/to.
+        this._fullRedraw();
         onDone();
         return;
       }
@@ -410,6 +410,8 @@ export class Game {
         this._spawnNextThree(() => done());
       } else {
         this._assignNextSpawnPreview();
+        // Cascade just finished; preview coords were replaced — must repaint markers.
+        this._fullRedraw();
         done();
       }
       return;
