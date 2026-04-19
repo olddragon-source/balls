@@ -1,0 +1,8 @@
+{
+  "name": "balls-lines",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test ./test/ball.test.js ./test/board.test.js ./test/grid-utils.test.js ./test/lines.test.js ./test/pathfinding.test.js"
+  }
+}
