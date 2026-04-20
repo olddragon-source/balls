@@ -17,7 +17,7 @@ export const INITIAL_RANDOM_BALLS = 5;
 export const MOVE_STEP_MS = 115;
 
 /** Длительность исчезновения линии (масштаб + прозрачность), мс. */
-export const VANISH_MS = 220;
+export const VANISH_MS = 1500;
 
 /** Пауза перед следующей проверкой каскада после сброса (мс). */
 export const CASCADE_GAP_MS = 0;

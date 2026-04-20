@@ -168,7 +168,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease, opacity 0.25s ease;
+  transition: transform 1.5s ease, opacity 1.5s ease;
 }
 
 .ball-wrap img {
