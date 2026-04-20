@@ -179,10 +179,10 @@ html, body {
   user-select: none;
 }
 
-/* Подсказка: куда встанут следующие три шарика (половина размера игрового шара) */
+/* Подсказка: куда встанут следующие три шарика  */
 .ball-next-marker {
-  width: 50%;
-  height: 50%;
+  width: 60%;
+  height: 60%;
   display: flex;
   align-items: center;
   justify-content: center;
