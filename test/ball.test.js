@@ -19,4 +19,8 @@ describe('Ball', () => {
   it('svgPath matches asset naming', () => {
     assert.equal(Ball.svgPath(3), 'balls/ball3.svg');
   });
+
+  it('svgPath throws on invalid color', () => {
+    assert.throws(() => Ball.svgPath(-1), RangeError);
+  });
 });

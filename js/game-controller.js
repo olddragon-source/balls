@@ -308,11 +308,7 @@ export class Game {
     const v = this.board.getAt(r, c);
     wrap.innerHTML = '';
     if (v !== EMPTY) {
-      const img = document.createElement('img');
-      img.src = Ball.svgPath(v);
-      img.alt = 'шар';
-      img.draggable = false;
-      wrap.appendChild(img);
+      wrap.appendChild(Ball.createSvgElement(v));
       if (withVanishClass) wrap.classList.add('vanish');
     } else {
       const pi = this._nextPreviewIndex(r, c);
@@ -321,11 +317,7 @@ export class Game {
         const mark = document.createElement('div');
         mark.className = 'ball-next-marker';
         mark.setAttribute('aria-hidden', 'true');
-        const img = document.createElement('img');
-        img.src = Ball.svgPath(preview.color);
-        img.alt = '';
-        img.draggable = false;
-        mark.appendChild(img);
+        mark.appendChild(Ball.createSvgElement(preview.color));
         wrap.appendChild(mark);
       }
     }
@@ -389,9 +381,7 @@ export class Game {
 
     const flyer = document.createElement('div');
     flyer.className = 'ball-fly';
-    const img = document.createElement('img');
-    img.src = Ball.svgPath(color);
-    flyer.appendChild(img);
+    flyer.appendChild(Ball.createSvgElement(color));
     document.body.appendChild(flyer);
 
     const rectAt = (r, c) => this.cellEls[r][c].getBoundingClientRect();

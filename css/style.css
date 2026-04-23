@@ -171,12 +171,12 @@ html, body {
   transition: transform 1.5s ease, opacity 1.5s ease;
 }
 
-.ball-wrap img {
+.ball-wrap svg {
   width: 100%;
   height: 100%;
-  object-fit: contain;
   pointer-events: none;
   user-select: none;
+  display: block;
 }
 
 /* Подсказка: куда встанут следующие три шарика  */
@@ -190,10 +190,9 @@ html, body {
   pointer-events: none;
 }
 
-.ball-next-marker img {
+.ball-next-marker svg {
   width: 100%;
   height: 100%;
-  object-fit: contain;
   display: block;
   user-select: none;
 }
@@ -213,10 +212,10 @@ html, body {
   transition: none;
 }
 
-.ball-fly img {
+.ball-fly svg {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  display: block;
 }
 
 .hint {
