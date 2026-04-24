@@ -68,7 +68,11 @@ html, body {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 14px;
-  justify-content: center;
+  justify-content: flex-start;
+}
+
+.toolbar-right {
+  margin-left: auto;
 }
 
 .btn {
